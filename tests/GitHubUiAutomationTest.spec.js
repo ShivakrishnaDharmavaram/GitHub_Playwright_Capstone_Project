@@ -5,7 +5,8 @@ import {RepoPage} from '../pages/RepoPage';
 import {NewRepoPage} from '../pages/NewRepo';
 import {NewRepoDetails} from '../pages/NewRepoDetails';
 
-// import { createRepoPayload } from '../utils/testData.json';
+import NewFileDetails from '../files/NewFileDetails.json';
+
 import * as updateTestData from '../utils/testData.js';
 
 import dotenv from 'dotenv';
@@ -127,6 +128,33 @@ test.describe('GitHub Automation using Playwright ', () => {
         await page.waitForTimeout(3000);
 
         await expect(repoUrl).toBe(`https://github.com/${userId}/${repoData.name}`);
+    });
+
+    test('Test-04-Create README file in the repository', async () => {
+        const newRepoDetails = new NewRepoDetails(page);
+
+        // Select the option to create README file
+        await newRepoDetails.selectNewFileCreation();
+        await page.waitForLoadState('domcontentloaded');
+        const readmeUrl = await page.url();
+        console.log("URL after selecting file creation:", readmeUrl);
+        await page.screenshot({ path: `screenshots/file_creation_page_${Date.now()}.png`, fullPage: true });
+        await page.waitForTimeout(3000);
+
+        // Fill the file name and content for the README file
+        await newRepoDetails.fillFileDetails(NewFileDetails.fileName, NewFileDetails.description);
+        await page.waitForTimeout(2000);
+        await page.screenshot({ path: `screenshots/file_details_filled_${Date.now()}.png`, fullPage: true });
+        await page.waitForTimeout(3000);
+
+        // Click on Commit changes button to save the README file
+        await newRepoDetails.clickCommitChanges();
+        await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
+        const finalRepoUrl = await page.url();
+        console.log("URL after committing README file:", finalRepoUrl);
+        await expect(finalRepoUrl).toContain(`/${userId}/${repoData.name}`);
+        await page.screenshot({ path: `screenshots/readme_file_committed_${Date.now()}.png`, fullPage: true });
+        await page.waitForTimeout(3000);
     });
 
 });
