@@ -2,6 +2,12 @@ import {test, expect} from '@playwright/test';
 import {LoginPage} from '../pages/LoginPage';
 import {HomePage} from '../pages/HomePage';
 import {RepoPage} from '../pages/RepoPage';
+import {NewRepoPage} from '../pages/NewRepo';
+import {NewRepoDetails} from '../pages/NewRepoDetails';
+
+// import { createRepoPayload } from '../utils/testData.json';
+import * as updateTestData from '../utils/testData.js';
+
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -9,6 +15,9 @@ test.describe.configure({ mode: 'serial' });
 test.describe('GitHub Automation using Playwright ', () => {
     let context;
     let page;
+    const url = process.env.GITHUB_URL || "https://github.com/login";
+    const userId = process.env.GITHUB_USER;
+    const password = process.env.GITHUB_PASSWORD;
 
     test.beforeAll(async ({ browser }) => {
         context = await browser.newContext();
@@ -21,9 +30,7 @@ test.describe('GitHub Automation using Playwright ', () => {
 
     test('Test-01-GitHub Login', async () => {
         const loginPage = new LoginPage(page);
-        const url = process.env.GITHUB_URL || "https://github.com/login";
-        const userId = process.env.GITHUB_USER;
-        const password = process.env.GITHUB_PASSWORD;
+        const homePage = new HomePage(page);
 
         await loginPage.navigate(url);
         await page.waitForLoadState('domcontentloaded');
@@ -56,7 +63,6 @@ test.describe('GitHub Automation using Playwright ', () => {
         await page.waitForTimeout(2000);
         
         //check whether dashboard is visible or not after login
-        const homePage = new HomePage(page);
         const isDashboardVisible = await homePage.isDashboardVisible();
         await expect(isDashboardVisible).toBeTruthy();
 
@@ -100,7 +106,30 @@ test.describe('GitHub Automation using Playwright ', () => {
         await page.waitForTimeout(3000);
     });
 
+    test('Test-03-Create a new repository', async () => {
+        const newRepoPage = new NewRepoPage(page);
+        const repoData = updateTestData.createRepoPayload();
+
+        // Create a new repository
+        await newRepoPage.createNewRepository(repoData);
+        await page.waitForTimeout(2000);
+        await newRepoPage.selectPrivateVisibility();
+        await page.waitForTimeout(2000);
+        await newRepoPage.selectPublicVisibility();
+        await page.waitForTimeout(2000);
+        await newRepoPage.clickCreateRepository();
+        // Wait for the repository to be created and the page to load
+        await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
+        const repoUrl = await page.url();
+        console.log("URL after creating new repository:", repoUrl);
+        await expect(repoUrl).toContain(`/${repoData.name}`);
+        await page.screenshot({ path: `screenshots/new_repository_created_${Date.now()}.png`, fullPage: true });
+        await page.waitForTimeout(3000);
+
+        await expect(repoUrl).toBe(`https://github.com/${userId}/${repoData.name}`);
+    });
+
 });
 
-// To run this specific test in headed mode, use the command:
-// npx playwright test tests/LoginTests.spec.js --headed
+// To run the test, use the following command in the terminal:
+// npx playwright test tests/GitHubUiAutomationTest.spec.js --headed
